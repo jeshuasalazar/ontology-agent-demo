@@ -1,0 +1,21 @@
+# Golden set: question -> the structured query the planner must produce.
+- q: "¿Cuántos días de inventario tenemos por región?"
+  expect: {metric: days_of_inventory, group_by: [region], filters: {}}
+- q: "Days of inventory for MS-12K-INV in Monterrey"
+  expect: {metric: days_of_inventory, group_by: [], filters: {store_id: MTY-VAL, sku: MS-12K-INV}}
+- q: "Margen de minisplit en Monterrey"
+  expect: {metric: gross_margin_pct, group_by: [], filters: {store_id: MTY-VAL, category: minisplit}}
+- q: "gross margin by category"
+  expect: {metric: gross_margin_pct, group_by: [category], filters: {}}
+- q: "sell-through por tienda al 2026-09-15"
+  expect: {metric: sell_through_pct, group_by: [store_id], filters: {}}
+- q: "Ingresos de la región norte en los últimos 14 días"
+  expect: {metric: revenue, group_by: [], filters: {region: norte}}
+- q: "¿Cuántas unidades de ventiladores vendimos en Guadalajara?"
+  expect: {metric: units_sold, group_by: [], filters: {store_id: GDL-CEN, category: fan}}
+- q: "revenue by store"
+  expect: {metric: revenue, group_by: [store_id], filters: {}}
+- q: "Cobertura de portátiles por tienda"
+  expect: {metric: days_of_inventory, group_by: [store_id], filters: {category: portable}}
+- q: "units sold by product in Polanco"
+  expect: {metric: units_sold, group_by: [sku], filters: {store_id: CDMX-POL}}

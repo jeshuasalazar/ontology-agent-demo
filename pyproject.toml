@@ -1,0 +1,36 @@
+[project]
+name = "ontology-agent-demo"
+version = "0.1.0"
+description = "Ontology-first enterprise reasoning: deterministic, auditable answers with near-zero LLM tokens"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=2.0.0",
+    "fastapi>=0.159.1",
+    "langchain-core>=1.6.13",
+    "langgraph>=1.2.16",
+    "pydantic>=2.14.1",
+    "pyyaml>=6.0.3",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.optional-dependencies]
+llm = [
+    "langchain-anthropic>=1.7.6",
+]
+elastic = [
+    "elasticsearch>=8,<9",
+]
+bigquery = [
+    "google-cloud-bigquery>=3.46.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]

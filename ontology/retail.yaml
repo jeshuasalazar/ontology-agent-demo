@@ -1,0 +1,139 @@
+# Business ontology for a home-appliance retailer (air conditioners).
+# Every metric is defined once, here, with its exact formula. The engine
+# only computes what this file defines, so the same question over the same
+# data always returns the same, auditable number.
+version: "1.0.0"
+domain: retail-hvac
+
+entities:
+  product:
+    key: sku
+    table: products
+    attributes: [sku, name, category, supplier_id, unit_cost]
+  store:
+    key: store_id
+    table: stores
+    attributes: [store_id, name, city, region]
+  supplier:
+    key: supplier_id
+    table: suppliers
+    attributes: [supplier_id, name]
+
+facts:
+  sales:
+    table: sales
+    grain: [date, store_id, sku]
+    measures: [units, unit_price]
+  inventory:
+    table: inventory
+    grain: [date, store_id, sku]
+    measures: [on_hand]
+
+dimensions: [store_id, sku, category, region]
+
+metrics:
+  units_sold:
+    label: Units sold
+    unit: units
+    description: Units sold between start_date and as_of, inclusive.
+    params: {window_days: 28}
+    sql: |
+      SELECT {group_cols}, SUM(s.units) AS value
+      FROM {sales} s
+      JOIN {products} p ON p.sku = s.sku
+      JOIN {stores} st ON st.store_id = s.store_id
+      WHERE s.date BETWEEN :start_date AND :as_of {filters}
+      GROUP BY {group_by}
+
+  revenue:
+    label: Revenue
+    unit: MXN
+    description: Sum of units times unit price between start_date and as_of.
+    params: {window_days: 28}
+    sql: |
+      SELECT {group_cols}, ROUND(SUM(s.units * s.unit_price), 2) AS value
+      FROM {sales} s
+      JOIN {products} p ON p.sku = s.sku
+      JOIN {stores} st ON st.store_id = s.store_id
+      WHERE s.date BETWEEN :start_date AND :as_of {filters}
+      GROUP BY {group_by}
+
+  gross_margin_pct:
+    label: Gross margin
+    unit: percent
+    description: (revenue - cost of goods sold) / revenue over the window, in percent.
+    params: {window_days: 28}
+    sql: |
+      SELECT {group_cols},
+             ROUND(100.0 * (SUM(s.units * s.unit_price) - SUM(s.units * p.unit_cost))
+                   / NULLIF(SUM(s.units * s.unit_price), 0), 2) AS value
+      FROM {sales} s
+      JOIN {products} p ON p.sku = s.sku
+      JOIN {stores} st ON st.store_id = s.store_id
+      WHERE s.date BETWEEN :start_date AND :as_of {filters}
+      GROUP BY {group_by}
+
+  days_of_inventory:
+    label: Days of inventory
+    unit: days
+    description: >
+      Units on hand at the close of as_of divided by average daily units sold
+      over the trailing window (default 28 days). Null when there were no sales
+      in the window, because coverage is undefined, not infinite.
+    params: {window_days: 28}
+    sql: |
+      WITH demand AS (
+        SELECT s.store_id, s.sku, SUM(s.units) * 1.0 / :window_days AS avg_daily
+        FROM {sales} s
+        WHERE s.date BETWEEN :start_date AND :as_of
+        GROUP BY s.store_id, s.sku
+      ),
+      stock AS (
+        SELECT i.store_id, i.sku, i.on_hand
+        FROM {inventory} i
+        WHERE i.date = :as_of
+      )
+      SELECT {group_cols},
+             ROUND(SUM(k.on_hand) * 1.0 / NULLIF(SUM(COALESCE(d.avg_daily, 0)), 0), 1) AS value
+      FROM stock k
+      LEFT JOIN demand d ON d.store_id = k.store_id AND d.sku = k.sku
+      JOIN {products} p ON p.sku = k.sku
+      JOIN {stores} st ON st.store_id = k.store_id
+      WHERE 1 = 1 {filters}
+      GROUP BY {group_by}
+
+  sell_through_pct:
+    label: Sell-through
+    unit: percent
+    description: Units sold in the window / (units sold + units on hand at as_of), in percent.
+    params: {window_days: 28}
+    sql: |
+      WITH sold AS (
+        SELECT s.store_id, s.sku, SUM(s.units) AS units
+        FROM {sales} s
+        WHERE s.date BETWEEN :start_date AND :as_of
+        GROUP BY s.store_id, s.sku
+      ),
+      stock AS (
+        SELECT i.store_id, i.sku, i.on_hand FROM {inventory} i WHERE i.date = :as_of
+      )
+      SELECT {group_cols},
+             ROUND(100.0 * SUM(COALESCE(o.units, 0))
+                   / NULLIF(SUM(COALESCE(o.units, 0)) + SUM(k.on_hand), 0), 2) AS value
+      FROM stock k
+      LEFT JOIN sold o ON o.store_id = k.store_id AND o.sku = k.sku
+      JOIN {products} p ON p.sku = k.sku
+      JOIN {stores} st ON st.store_id = k.store_id
+      WHERE 1 = 1 {filters}
+      GROUP BY {group_by}
+
+rules:
+  reorder_needed:
+    description: >
+      Reorder a product at a store when its days of inventory fall below the
+      supplier's lead time plus the safety stock. The lead time is not in the
+      warehouse: it is read from supplier emails and cited as evidence.
+    metric: days_of_inventory
+    grain: [store_id, sku]
+    safety_stock_days: 7
+    lead_time_source: supplier_documents

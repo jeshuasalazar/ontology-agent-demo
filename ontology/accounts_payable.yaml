@@ -1,0 +1,27 @@
+# Accounts-payable ontology for an accounting firm (fictitious data).
+# These are the rules the LLM invoice agent used to read from a manual.
+# Encoded here, they run with zero tokens and give the same decisions every time.
+version: "1.0.0"
+domain: accounts-payable
+company_rfc: CCO140215AB3
+iva_rate: 0.16
+tolerance_mxn: 0.00          # totals must match to the cent
+payment_days: [Tuesday, Thursday]
+payment_time: "13:00"
+weekly_budget_mxn: 40000
+suppliers:
+  NNS180509K21: {name: Nube Norte Software, terms: {credit_days: 15}}
+  PAR020611QW8: {name: Papelería Los Arcos, terms: {credit_days: 0}}
+  TCI110120HG5: {name: Torre Ceibas Inmobiliaria, terms: {due_day_of_month: 1}}
+  ETT150830LM2: {name: Enlace Total Telecom, terms: {credit_days: 10}}
+  LBR190402PT6: {name: Limpieza Brillo, terms: {credit_days: 15}}
+checks:
+  - receiver_rfc        # issued to the firm's RFC
+  - totals_add_up       # subtotal + transferred taxes - withheld taxes = total
+  - iva_is_16_percent   # transferred IVA = 16% of subtotal
+  - unique_uuid         # a fiscal folio is never paid twice
+  - known_supplier      # supplier is in the approved list
+decisions:
+  pay: all checks pass and the invoice fits in the remaining budget (scheduled by due date)
+  clarify: receiver_rfc, totals_add_up or iva_is_16_percent fails (email the supplier)
+  reject: unique_uuid fails (duplicate) or the supplier is unknown
