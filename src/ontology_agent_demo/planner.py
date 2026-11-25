@@ -32,10 +32,22 @@ GROUP_WORDS = {
 }
 VALUES = {
     "region": {"norte": "norte", "centro": "centro", "occidente": "occidente"},
-    "store_id": {"monterrey": "MTY-VAL", "valle oriente": "MTY-VAL", "polanco": "CDMX-POL",
-                 "ciudad de mexico": "CDMX-POL", "guadalajara": "GDL-CEN"},
-    "category": {"minisplit": "minisplit", "portatil": "portable", "portable": "portable",
-                 "ventana": "window", "window": "window", "ventilador": "fan", "fan": "fan"},
+    "store_id": {
+        "monterrey": "MTY-VAL",
+        "valle oriente": "MTY-VAL",
+        "polanco": "CDMX-POL",
+        "ciudad de mexico": "CDMX-POL",
+        "guadalajara": "GDL-CEN",
+    },
+    "category": {
+        "minisplit": "minisplit",
+        "portatil": "portable",
+        "portable": "portable",
+        "ventana": "window",
+        "window": "window",
+        "ventilador": "fan",
+        "fan": "fan",
+    },
 }
 SKU = re.compile(r"\b(MS-\d+K-(?:INV|STD)|PT-\d+K|WN-\d+K|FAN-TWR)\b", re.I)
 DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
@@ -72,8 +84,10 @@ def deterministic_plan(question: str) -> Plan:
         filters["sku"] = m.group(1).upper()
     as_of = date.fromisoformat(m.group(1)) if (m := DATE.search(q)) else None
     window = int(m.group(1)) if (m := WINDOW.search(q.replace(as_of.isoformat() if as_of else "\0", ""))) else None
-    return Plan(query=Query(metric=metric, group_by=group_by, filters=filters, as_of=as_of, window_days=window),
-                planner="deterministic")
+    return Plan(
+        query=Query(metric=metric, group_by=group_by, filters=filters, as_of=as_of, window_days=window),
+        planner="deterministic",
+    )
 
 
 def llm_plan(question: str, ontology) -> Plan:
@@ -83,8 +97,10 @@ def llm_plan(question: str, ontology) -> Plan:
     model = ChatAnthropic(model=os.getenv("ONTOLOGY_LLM_MODEL", "claude-haiku-5-5"), temperature=0, max_tokens=300)
     structured = model.with_structured_output(Query, include_raw=True)
     catalog = "\n".join(f"- {k}: {m.description}" for k, m in ontology.metrics.items())
-    prompt = (f"Map the question to one metric from this ontology. Dimensions: {ontology.dimensions}. "
-              f"Store ids: CDMX-POL, GDL-CEN, MTY-VAL. Regions: norte, centro, occidente.\n{catalog}\n\nQuestion: {question}")
+    prompt = (
+        f"Map the question to one metric from this ontology. Dimensions: {ontology.dimensions}. "
+        f"Store ids: CDMX-POL, GDL-CEN, MTY-VAL. Regions: norte, centro, occidente.\n{catalog}\n\nQuestion: {question}"
+    )
     out = structured.invoke(prompt)
     usage = getattr(out["raw"], "usage_metadata", None) or {}
     return Plan(query=out["parsed"], planner="llm", llm_tokens=usage.get("total_tokens", 0))

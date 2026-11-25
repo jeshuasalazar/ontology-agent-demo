@@ -19,8 +19,11 @@ from .payables import reconcile
 from .retrieval import ElasticsearchRetriever, LocalRetriever
 from .rules import reorder_report
 
-app = FastAPI(title="Ontology Agent Demo", version="0.1.0",
-              description="Deterministic, auditable answers over a business ontology, with near-zero LLM tokens.")
+app = FastAPI(
+    title="Ontology Agent Demo",
+    version="0.1.0",
+    description="Deterministic, auditable answers over a business ontology, with near-zero LLM tokens.",
+)
 
 
 @lru_cache
@@ -61,9 +64,14 @@ def health():
 @app.get("/ontology")
 def ontology():
     o = engine().ontology
-    return {"version": o.version, "dimensions": o.dimensions,
-            "metrics": {k: {"label": m.label, "unit": m.unit, "description": m.description, "fingerprint": m.fingerprint}
-                        for k, m in o.metrics.items()}}
+    return {
+        "version": o.version,
+        "dimensions": o.dimensions,
+        "metrics": {
+            k: {"label": m.label, "unit": m.unit, "description": m.description, "fingerprint": m.fingerprint}
+            for k, m in o.metrics.items()
+        },
+    }
 
 
 @app.post("/metrics")
@@ -74,8 +82,13 @@ def metric(q: Query):
     except UnknownMetric as e:
         raise HTTPException(422, str(e)) from e
     audit_id = audit().append({"kind": "metric", **r.audit})
-    return {"rows": [row.model_dump() for row in r.rows], "query": r.query, "audit_id": audit_id,
-            "llm_tokens": 0, "ms": round(1000 * (time.perf_counter() - t0), 1)}
+    return {
+        "rows": [row.model_dump() for row in r.rows],
+        "query": r.query,
+        "audit_id": audit_id,
+        "llm_tokens": 0,
+        "ms": round(1000 * (time.perf_counter() - t0), 1),
+    }
 
 
 @app.post("/ask")
@@ -84,7 +97,9 @@ def ask_question(body: Ask):
     s = ask(agent(), body.question)
     out = {"answer": s["answer"], "planner": s["plan"].planner, "llm_tokens": s.get("llm_tokens", 0)}
     if r := s.get("result"):
-        out["audit_id"] = audit().append({"kind": "ask", "question": body.question, "llm_tokens": out["llm_tokens"], **r.audit})
+        out["audit_id"] = audit().append(
+            {"kind": "ask", "question": body.question, "llm_tokens": out["llm_tokens"], **r.audit}
+        )
         out["rows"] = [row.model_dump() for row in r.rows]
     out["ms"] = round(1000 * (time.perf_counter() - t0), 1)
     return out
@@ -93,16 +108,24 @@ def ask_question(body: Ask):
 @app.get("/rules/reorder")
 def reorder(as_of: date | None = None):
     decisions = reorder_report(engine(), retriever(), as_of)
-    audit_id = audit().append({"kind": "rule", "rule": "reorder_needed", "as_of": str(as_of),
-                               "reorders": sum(d.reorder for d in decisions), "llm_tokens": 0})
+    audit_id = audit().append(
+        {
+            "kind": "rule",
+            "rule": "reorder_needed",
+            "as_of": str(as_of),
+            "reorders": sum(d.reorder for d in decisions),
+            "llm_tokens": 0,
+        }
+    )
     return {"decisions": [d.model_dump() for d in decisions], "audit_id": audit_id, "llm_tokens": 0}
 
 
 @app.get("/payables/run")
 def payables(run_date: date = date(2026, 10, 13)):
     run = reconcile(run_date)
-    audit_id = audit().append({"kind": "payables", "run_date": str(run_date),
-                               "scheduled_total": str(run.scheduled_total), "llm_tokens": 0})
+    audit_id = audit().append(
+        {"kind": "payables", "run_date": str(run_date), "scheduled_total": str(run.scheduled_total), "llm_tokens": 0}
+    )
     return {**run.model_dump(mode="json"), "audit_id": audit_id}
 
 

@@ -29,8 +29,11 @@ def test_units_sold_matches_python(engine):
 def test_days_of_inventory_matches_python(engine):
     store, sku = "GDL-CEN", "MS-12K-INV"
     sold = sum(int(r["units"]) for r in rows("sales") if in_window(r) and r["store_id"] == store and r["sku"] == sku)
-    on_hand = next(int(r["on_hand"]) for r in rows("inventory")
-                   if r["date"] == AS_OF.isoformat() and r["store_id"] == store and r["sku"] == sku)
+    on_hand = next(
+        int(r["on_hand"])
+        for r in rows("inventory")
+        if r["date"] == AS_OF.isoformat() and r["store_id"] == store and r["sku"] == sku
+    )
     got = engine.run(Query(metric="days_of_inventory", filters={"store_id": store, "sku": sku})).rows[0].value
     assert got == round(on_hand / (sold / 28), 1)
 

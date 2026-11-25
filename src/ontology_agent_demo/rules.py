@@ -31,15 +31,35 @@ def reorder_report(engine: Engine, retriever, as_of=None) -> list[ReorderDecisio
             cache[sup] = extract_lead_time(sup, retriever)
         lt = cache[sup]
         if lt is None:
-            out.append(ReorderDecision(store_id=store, sku=sku, days_of_inventory=row.value, lead_time=None,
-                                       threshold_days=None, reorder=False, reason="no lead-time evidence: escalate to a human"))
+            out.append(
+                ReorderDecision(
+                    store_id=store,
+                    sku=sku,
+                    days_of_inventory=row.value,
+                    lead_time=None,
+                    threshold_days=None,
+                    reorder=False,
+                    reason="no lead-time evidence: escalate to a human",
+                )
+            )
             continue
         threshold = lt.days + rule.safety_stock_days
         if row.value is None:
             reorder, reason = False, "no sales in window: coverage undefined"
         else:
             reorder = row.value < threshold
-            reason = f"{row.value} days < {lt.days} lead time + {rule.safety_stock_days} safety" if reorder else "covered"
-        out.append(ReorderDecision(store_id=store, sku=sku, days_of_inventory=row.value, lead_time=lt,
-                                   threshold_days=threshold, reorder=reorder, reason=reason))
+            reason = (
+                f"{row.value} days < {lt.days} lead time + {rule.safety_stock_days} safety" if reorder else "covered"
+            )
+        out.append(
+            ReorderDecision(
+                store_id=store,
+                sku=sku,
+                days_of_inventory=row.value,
+                lead_time=lt,
+                threshold_days=threshold,
+                reorder=reorder,
+                reason=reason,
+            )
+        )
     return out

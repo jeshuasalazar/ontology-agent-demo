@@ -1,5 +1,7 @@
 # Ontology Agent Demo
 
+[![CI](https://github.com/jeshuasalazar/ontology-agent-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/jeshuasalazar/ontology-agent-demo/actions/workflows/ci.yml)
+
 **Deterministic, auditable answers over enterprise data, with near-zero LLM tokens.**
 
 Most "AI for the enterprise" sends business data to an LLM on every question and hopes the
@@ -54,10 +56,13 @@ flowchart LR
   Each decision carries its evidence. With no evidence, it escalates to a human instead of
   assuming.
 - **`payables.py`** + **`ontology/accounts_payable.yaml`**: CFDI 4.0 invoice
-  reconciliation. Checks include receiver RFC, totals to the cent, 16% IVA, duplicate fiscal
-  folio and approved supplier. Payments are scheduled by due date within budget. It
-  reproduces the decisions of an LLM agent that did the same job: 3 to pay, 2 to clarify,
-  1 duplicate, $32,190 scheduled, $7,810 left. It does so with zero tokens.
+  reconciliation. Checks include voucher type (a credit note is never paid), currency,
+  receiver RFC, totals to the cent net of discounts, IVA at 16% line by line with the SAT's
+  per-concept rounding (rate 0 and exempt lines pass), duplicate fiscal folio and approved
+  supplier. Payments are scheduled by due date within budget, and fixed-day terms roll to the
+  next month and clamp to month end. It reproduces the decisions of an LLM agent that did the
+  same job: 3 to pay, 2 to clarify, 1 duplicate, $32,190 scheduled, $7,810 left. It does so
+  with zero tokens.
 - **`audit.py`**: append-only JSONL with a SHA-256 hash chain. `GET /audit/verify` detects
   any edit to a past record.
 - **`api.py`**: **FastAPI** with `/ask`, `/metrics`, `/rules/reorder`, `/payables/run`,
@@ -118,5 +123,7 @@ seed. It covers 3 stores (CDMX, Guadalajara, Monterrey), 8 air-conditioning SKUs
 
 The deterministic planner covers the vocabulary in `planner.py`, and broader phrasing needs
 the LLM planner. The metric SQL targets DuckDB and BigQuery. Retrieval is lexical (BM25), and
-hybrid vector search is the natural next step. This is a demonstration, not a production
+hybrid vector search is the natural next step. Payables reads the invoice XML as given: it
+does not check the SAT cancellation status or validate the seal, which a production run would
+do against the SAT web service before paying. This is a demonstration, not a production
 system.

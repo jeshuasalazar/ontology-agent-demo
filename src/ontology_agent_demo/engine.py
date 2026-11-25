@@ -161,7 +161,7 @@ class Engine:
         sql, params = self.compile(q)
         raw = sorted(self.backend.run(sql, params), key=lambda r: tuple(str(x) for x in r[:-1]))
         dims = q.group_by or ["scope"]
-        rows = [Row(dims=dict(zip(dims, map(str, r[:-1]))), value=_num(r[-1])) for r in raw]
+        rows = [Row(dims=dict(zip(dims, map(str, r[:-1]), strict=True)), value=_num(r[-1])) for r in raw]
         metric = self.ontology.metrics[q.metric]
         audit = {
             "ontology_version": self.ontology.version,

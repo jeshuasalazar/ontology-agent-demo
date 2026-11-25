@@ -1,10 +1,12 @@
 # Accounts-payable ontology for an accounting firm (fictitious data).
 # These are the rules the LLM invoice agent used to read from a manual.
 # Encoded here, they run with zero tokens and give the same decisions every time.
-version: "1.0.0"
+version: "1.1.0"
 domain: accounts-payable
 company_rfc: CCO140215AB3
+currency: MXN
 iva_rate: 0.16
+iva_rounding_mxn: 0.01       # SAT rounds IVA per concept, so each line may differ by a cent
 tolerance_mxn: 0.00          # totals must match to the cent
 payment_days: [Tuesday, Thursday]
 payment_time: "13:00"
@@ -16,12 +18,14 @@ suppliers:
   ETT150830LM2: {name: Enlace Total Telecom, terms: {credit_days: 10}}
   LBR190402PT6: {name: Limpieza Brillo, terms: {credit_days: 15}}
 checks:
+  - income_invoice      # TipoDeComprobante I; credit notes (E) and payment receipts (P) are never paid
+  - currency            # same currency as the budget
   - receiver_rfc        # issued to the firm's RFC
-  - totals_add_up       # subtotal + transferred taxes - withheld taxes = total
-  - iva_is_16_percent   # transferred IVA = 16% of subtotal
+  - totals_add_up       # subtotal - discount + transferred taxes - withheld taxes = total
+  - iva_is_16_percent   # each concept's IVA = 16% of its own base (rate 0 and exempt lines pass)
   - unique_uuid         # a fiscal folio is never paid twice
   - known_supplier      # supplier is in the approved list
 decisions:
   pay: all checks pass and the invoice fits in the remaining budget (scheduled by due date)
-  clarify: receiver_rfc, totals_add_up or iva_is_16_percent fails (email the supplier)
+  clarify: income_invoice, currency, receiver_rfc, totals_add_up or iva_is_16_percent fails (a person decides)
   reject: unique_uuid fails (duplicate) or the supplier is unknown
