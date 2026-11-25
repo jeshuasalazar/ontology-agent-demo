@@ -45,16 +45,27 @@ def build_agent(engine: Engine, use_llm: bool | None = None):
         m = engine.ontology.metrics[r.query.metric]
         parts = [f"{', '.join(row.dims.values())}: {_fmt(row.value, m.unit)}" for row in r.rows]
         scope = f" ({', '.join(f'{k}={v}' for k, v in r.query.filters.items())})" if r.query.filters else ""
-        text = (f"{m.label}{scope} as of {r.query.as_of}: " + "; ".join(parts) +
-                f". Definition v{r.audit['ontology_version']}: {m.description.strip()}")
+        text = (
+            f"{m.label}{scope} as of {r.query.as_of}: "
+            + "; ".join(parts)
+            + f". Definition v{r.audit['ontology_version']}: {m.description.strip()}"
+        )
         return {"answer": text}
 
     def clarify(state: State) -> State:
         known = ", ".join(engine.ontology.metrics)
-        return {"answer": f"I can't answer that deterministically ({'; '.join(state['errors'])}). Known metrics: {known}."}
+        return {
+            "answer": f"I can't answer that deterministically ({'; '.join(state['errors'])}). Known metrics: {known}."
+        }
 
     g = StateGraph(State)
-    for name, fn in [("plan", plan), ("validate", validate), ("compute", compute), ("answer", answer), ("clarify", clarify)]:
+    for name, fn in [
+        ("plan", plan),
+        ("validate", validate),
+        ("compute", compute),
+        ("answer", answer),
+        ("clarify", clarify),
+    ]:
         g.add_node(name, fn)
     g.set_entry_point("plan")
     g.add_edge("plan", "validate")

@@ -22,9 +22,10 @@ HERE = Path(__file__).parent
 
 
 def raw_window_tokens(engine, q) -> int:
-    sql, params = engine.compile(q)
+    _sql, params = engine.compile(q)
     rows = engine.backend.run(
-        "SELECT * FROM sales WHERE date BETWEEN $start_date AND $as_of", {"start_date": params["start_date"], "as_of": params["as_of"]}
+        "SELECT * FROM sales WHERE date BETWEEN $start_date AND $as_of",
+        {"start_date": params["start_date"], "as_of": params["as_of"]},
     ) + engine.backend.run("SELECT * FROM inventory WHERE date = $as_of", {"as_of": params["as_of"]})
     buf = io.StringIO()
     csv.writer(buf).writerows(rows)
@@ -42,7 +43,11 @@ def main() -> None:
         s = ask(agent, c["q"])
         ms.append(1000 * (time.perf_counter() - t0))
         q, e = s["plan"].query, c["expect"]
-        hit = q is not None and (q.metric, sorted(q.group_by), q.filters) == (e["metric"], sorted(e["group_by"]), e["filters"])
+        hit = q is not None and (q.metric, sorted(q.group_by), q.filters) == (
+            e["metric"],
+            sorted(e["group_by"]),
+            e["filters"],
+        )
         est = raw_window_tokens(engine, q) if q else 0
         ok, spent, floor = ok + hit, spent + s["llm_tokens"], floor + est
         print(f"{c['q'][:58]:58} {'✓' if hit else '✗':>3} {s['llm_tokens']:>6} {est:>13,} {ms[-1]:>6.1f}")
@@ -53,8 +58,10 @@ def main() -> None:
     print(f"\nPlanner accuracy: {ok}/{len(cases)}")
     print(f"Tokens spent, ontology-first: {spent}  |  llm-only floor (estimated): {floor:,}")
     print(f"Median latency: {sorted(ms)[len(ms) // 2]:.1f} ms per question")
-    print(f"Invoice run: {len(run.decisions)} CFDI, ${run.scheduled_total} scheduled, 0 tokens, {ap_ms:.1f} ms "
-          f"(an LLM reading the same XML needs >= {xml_tokens:,} input tokens per run)")
+    print(
+        f"Invoice run: {len(run.decisions)} CFDI, ${run.scheduled_total} scheduled, 0 tokens, {ap_ms:.1f} ms "
+        f"(an LLM reading the same XML needs >= {xml_tokens:,} input tokens per run)"
+    )
 
 
 if __name__ == "__main__":

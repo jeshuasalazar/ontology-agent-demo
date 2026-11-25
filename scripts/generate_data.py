@@ -25,8 +25,16 @@ STORES = [
     ("MTY-VAL", "Valle Oriente", "Monterrey", "norte"),
 ]
 HEAT = {"CDMX-POL": 0.6, "GDL-CEN": 0.9, "MTY-VAL": 1.6}
-BASE = {"MS-12K-INV": 3.2, "MS-18K-INV": 1.8, "MS-24K-INV": 0.9, "MS-12K-STD": 2.1,
-        "PT-10K": 1.5, "PT-14K": 0.8, "WN-12K": 0.7, "FAN-TWR": 4.0}
+BASE = {
+    "MS-12K-INV": 3.2,
+    "MS-18K-INV": 1.8,
+    "MS-24K-INV": 0.9,
+    "MS-12K-STD": 2.1,
+    "PT-10K": 1.5,
+    "PT-14K": 0.8,
+    "WN-12K": 0.7,
+    "FAN-TWR": 4.0,
+}
 MARKUP = 1.42
 
 

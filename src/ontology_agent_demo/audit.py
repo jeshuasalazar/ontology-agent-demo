@@ -35,7 +35,10 @@ class AuditLog:
         prev = "genesis"
         for r in self._records():
             body = {k: v for k, v in r.items() if k != "hash"}
-            ok = r["prev"] == prev and hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest() == r["hash"]
+            ok = (
+                r["prev"] == prev
+                and hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest() == r["hash"]
+            )
             if not ok:
                 return {"valid": False, "broken_at": r["seq"]}
             prev = r["hash"]

@@ -49,7 +49,7 @@ class LocalRetriever:
     def search(self, query: str, k: int = 3) -> list[Passage]:
         n, q = len(self.docs), _tokens(query)
         scored = []
-        for doc, tf in zip(self.docs, self.tf):
+        for doc, tf in zip(self.docs, self.tf, strict=True):
             length, s = sum(tf.values()), 0.0
             for term in q:
                 df = sum(1 for t in self.tf if term in t)
@@ -72,9 +72,13 @@ class ElasticsearchRetriever:
 
         self.es, self.index = Elasticsearch(url), index
         if not self.es.indices.exists(index=index):
-            self.es.indices.create(index=index, mappings={"properties": {"text": {"type": "text"}, "source": {"type": "keyword"}}})
+            self.es.indices.create(
+                index=index, mappings={"properties": {"text": {"type": "text"}, "source": {"type": "keyword"}}}
+            )
             for p in sorted(docs_dir.glob("*.md")):
-                self.es.index(index=index, id=p.name, document={"source": p.name, "text": p.read_text(encoding="utf-8")})
+                self.es.index(
+                    index=index, id=p.name, document={"source": p.name, "text": p.read_text(encoding="utf-8")}
+                )
             self.es.indices.refresh(index=index)
 
     def search(self, query: str, k: int = 3) -> list[Passage]:
